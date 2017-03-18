@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "@slack/client": "^3.9.0",
+    "hapi": "^16.1.0",
+    "joi": "^10.2.2"
+  },
+  "name": "slack-stamp-command",
+  "version": "0.0.1",
+  "main": "app.js",
+  "author": "ringogirl <lowitzarc@gmail.com>",
+  "license": "MIT"
+}

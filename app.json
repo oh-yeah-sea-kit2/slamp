@@ -1,0 +1,10 @@
+{
+  "name": "slack-stemp-command",
+  "description": "Big :emoji: like stamp",
+  "repository": "https://github.com/ringogirl/slack-stamp-command",
+  "env" : {
+    "TOKEN": "",
+    "SLASH_COMMANDS_TOKEN": "",
+    "TZ"                        : "Asia/Tokyo"
+  }
+}
