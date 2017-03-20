@@ -4,11 +4,19 @@ const Hapi = require('hapi');
 const server = new Hapi.Server();
 const Joi = require('joi');
 const WebClient = require('@slack/client').WebClient;
+const redis = require('redis');
+const bluebird = require('bluebird');
+const url = require('url');
 const request = require('request');
 
-const slackClient = new WebClient(process.env.TOKEN);
+bluebird.promisifyAll(redis.RedisClient.prototype);
+
+const REDIS_EMOJI_KEY = 'slack_emoji';
 
 server.connection({port: (process.env.PORT || 8124)});
+
+const redisClient = redis.createClient(process.env.REDISTOGO_URL);
+const slackClient = new WebClient(process.env.TOKEN);
 
 const rootHandler = function(req, reply, source, rootErr) {
   console.log(req.payload);
@@ -40,6 +48,7 @@ const rootHandler = function(req, reply, source, rootErr) {
       }],
     });
   }).catch((err) => {
+    console.error(err);
     reply({
       text: `${text} is missing or an error has occurred. please try again :pray:`
     });
@@ -65,18 +74,38 @@ const rootValidates = {
 }
 
 function getEmoji(emoji) {
-  return slackClient.emoji.list().then(res => {
-    const emojis = res.emoji;
+  return redisClient.existsAsync(REDIS_EMOJI_KEY).then((reply) => {
+    if (reply === 1) {
+      return redisClient.getAsync(REDIS_EMOJI_KEY).then((result) => {
+        const emojis = JSON.parse(result);
 
-    if (!emojis[emoji]) return Promise.reject(new Error('Emoji is missing'));
+        if (!emojis[emoji]) return Promise.reject(new Error('Emoji is missing'));
 
-    return emojis[emoji];
+        return emojis[emoji];
+      });
+    } else {
+      return slackClient.emoji.list().then(res => {
+        const emojis = res.emoji;
+
+        if (!emojis[emoji]) return Promise.reject(new Error('Emoji is missing'));
+
+        return redisClient.setexAsync(REDIS_EMOJI_KEY, 3600, JSON.stringify(emojis)).then(() => emojis[emoji]);
+      });
+    }
   });
 }
 
 function getUser(userID) {
-  return slackClient.users.info(userID).then(res => {
-    return res.user;
+  return redisClient.existsAsync(userID).then((reply) => {
+    if (reply === 1) {
+      return redisClient.getAsync(userID).then((user) => {
+        return JSON.parse(user);
+      });
+    } else {
+      return slackClient.users.info(userID).then(res => {
+        return redisClient.setAsync(userID, JSON.stringify(res.user)).then(() => res.user);
+      });
+    }
   });
 }
 
