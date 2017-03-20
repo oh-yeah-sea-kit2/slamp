@@ -28,6 +28,7 @@ const rootHandler = function(req, reply, source, rootErr) {
   const emoji = text.replace(/:([^:]+):/, '$1');
 
   Promise.all([getEmoji(emoji), getUser(userID)]).then(([emojiImage, user]) => {
+    reply();
     return slackClient.chat.postMessage(channelID, '', {
       text: '',
       username: user.name,
@@ -43,8 +44,6 @@ const rootHandler = function(req, reply, source, rootErr) {
       text: `${text} is missing or an error has occurred. please try again :pray:`
     });
   });
-
-  reply();
 }
 
 const rootValidates = {
