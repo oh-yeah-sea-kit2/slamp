@@ -19,9 +19,10 @@ const redisClient = redis.createClient(process.env.REDISTOGO_URL);
 const slackClient = new WebClient(process.env.TOKEN);
 
 const rootHandler = function(req, reply, source, rootErr) {
+  console.log('Request payload: ');
   console.log(req.payload);
 
-  if (rootErr) return reply({ response_type: 'ephemeral', text: 'an error has occurred :pray:' });
+  if (rootErr) return reply({ response_type: 'ephemeral', text: 'An error has occurred :pray:' });
 
   const {
     payload: {
@@ -36,7 +37,6 @@ const rootHandler = function(req, reply, source, rootErr) {
   const emoji = text.replace(/:([^:]+):/, '$1');
 
   Promise.all([getEmoji(emoji), getUser(userID)]).then(([emojiImage, user]) => {
-    reply();
     return slackClient.chat.postMessage(channelID, '', {
       text: '',
       username: user.name,
@@ -46,11 +46,12 @@ const rootHandler = function(req, reply, source, rootErr) {
         text: "",
         image_url: emojiImage,
       }],
+    }).then(() => {
+      reply();
     });
   }).catch((err) => {
-    console.error(err);
     reply({
-      text: `${text} is missing or an error has occurred. please try again :pray:`
+      text: err.message,
     });
   });
 }
@@ -75,29 +76,28 @@ const rootValidates = {
 
 function getEmoji(emoji) {
   return redisClient.existsAsync(REDIS_EMOJI_KEY).then((reply) => {
-    if (reply === 1) {
-      return redisClient.getAsync(REDIS_EMOJI_KEY).then((result) => {
-        const emojis = JSON.parse(result);
-
-        if (!emojis[emoji]) return Promise.reject(new Error('Emoji is missing'));
-
+    return getEmojis(reply).then((emojis) => {
+        if (!emojis[emoji]) throw new Error(`${emoji} is missing or an error has occurred. please try again :pray:`);
         return emojis[emoji];
-      });
-    } else {
-      return slackClient.emoji.list().then(res => {
-        const emojis = res.emoji;
-
-        if (!emojis[emoji]) return Promise.reject(new Error('Emoji is missing'));
-
-        return redisClient.setexAsync(REDIS_EMOJI_KEY, 3600, JSON.stringify(emojis)).then(() => emojis[emoji]);
-      });
-    }
+    });
   });
+}
+
+function getEmojis(isCached = 0) {
+  if (isCached) {
+    return redisClient.getAsync(REDIS_EMOJI_KEY).then((result) => {
+      return JSON.parse(result);
+    });
+  } else {
+    return slackClient.emoji.list().then((res) => {
+      return res.emoji;
+    });
+  }
 }
 
 function getUser(userID) {
   return redisClient.existsAsync(userID).then((reply) => {
-    if (reply === 1) {
+    if (reply) {
       return redisClient.getAsync(userID).then((user) => {
         return JSON.parse(user);
       });
