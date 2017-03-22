@@ -7,7 +7,6 @@ const WebClient = require('@slack/client').WebClient;
 const redis = require('redis');
 const bluebird = require('bluebird');
 const url = require('url');
-const request = require('request');
 
 bluebird.promisifyAll(redis.RedisClient.prototype);
 
@@ -18,9 +17,8 @@ server.connection({port: (process.env.PORT || 8124)});
 const redisClient = redis.createClient(process.env.REDISTOGO_URL);
 const slackClient = new WebClient(process.env.TOKEN);
 
-const rootHandler = function(req, reply, source, rootErr) {
-  console.log('Request payload: ');
-  console.log(req.payload);
+const rootHandler = function(request, reply, source, rootErr) {
+  console.log(request.payload);
 
   if (rootErr) return reply({ response_type: 'ephemeral', text: 'An error has occurred :pray:' });
 
@@ -32,7 +30,7 @@ const rootHandler = function(req, reply, source, rootErr) {
       channel_id: channelID,
       response_url: responseURL,
     },
-  } = req;
+  } = request;
 
   const emoji = text.replace(/:([^:]+):/, '$1');
 
