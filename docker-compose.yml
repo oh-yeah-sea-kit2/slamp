@@ -2,7 +2,19 @@ version: "2"
 
 services:
   redis:
-    image: redis:alpine
-    ports:
-     - "6379:6379"
+    image: redis
     restart: always
+  mongo:
+    image: mongo
+    restart: always
+  web:
+    build: .
+    command: yarn start
+    ports:
+      - "8124:8124"
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - mongo
+    env_file: .env
