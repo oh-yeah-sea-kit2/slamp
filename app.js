@@ -158,7 +158,7 @@ server.register(require('bell'), (err) => {
 
           User.update({ id }, user, { upsert: true }, (err) => {
             if (err) {
-              reply(`An error has occurred. please try agein. <a href="${process.env.URL}">process.env.URL</a>`);
+              reply(`An error has occurred. please try agein. <a href="${process.env.URL}">${process.env.URL}</a>`);
             } else {
               reply('Success');
             }
