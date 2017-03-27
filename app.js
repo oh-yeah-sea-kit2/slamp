@@ -1,26 +1,18 @@
-'use strict'
+'use strict';
 
-const Hapi = require('hapi');
-const server = new Hapi.Server();
-const Joi = require('joi');
-const WebClient = require('@slack/client').WebClient;
-const redis = require('redis');
-const bluebird = require('bluebird');
-const url = require('url');
+const Hapi = require('hapi'),
+      Joi = require('joi'),
+      WebClient = require('@slack/client').WebClient,
+      url = require('url'),
+      path = require('path'),
+      mongoose = require('mongoose'),
+      User = require('./models/user');
 
-bluebird.promisifyAll(redis.RedisClient.prototype);
-
-const REDIS_EMOJI_KEY = 'slack_emoji';
-
-server.connection({port: (process.env.PORT || 8124)});
-
-const redisClient = redis.createClient(process.env.REDISTOGO_URL);
-const slackClient = new WebClient(process.env.TOKEN);
+mongoose.Promise = Promise;
+mongoose.connect(process.env.MONGODB_URI);
 
 const rootHandler = function(request, reply, source, rootErr) {
-  console.log(request.payload);
-
-  if (rootErr) return reply({ response_type: 'ephemeral', text: 'An error has occurred :pray:' });
+  if (rootErr) return reply({ text: 'An error has occurred :pray:' });
 
   const {
     payload: {
@@ -34,18 +26,21 @@ const rootHandler = function(request, reply, source, rootErr) {
 
   const emoji = text.replace(/:([^:]+):/, '$1');
 
-  Promise.all([getEmoji(emoji), getUser(userID)]).then(([emojiImage, user]) => {
-    return slackClient.chat.postMessage(channelID, '', {
-      text: '',
-      username: user.name,
-      icon_url: user.profile.image_48,
-      attachments: [{
-        color: '#fff',
-        text: "",
-        image_url: emojiImage,
-      }],
-    }).then(() => {
-      reply();
+  getUser(userID).then((user) => {
+    const slackClient = new WebClient(user.token);
+
+    return getEmoji(slackClient, emoji).then((image) => {
+      return slackClient.chat.postMessage(channelID, '', {
+        as_user: true,
+        text: '',
+        attachments: [{
+          color: '#fff',
+          text: '',
+          image_url: image,
+        }],
+      }).then(() => {
+        reply();
+      });
     });
   }).catch((err) => {
     reply({
@@ -56,7 +51,7 @@ const rootHandler = function(request, reply, source, rootErr) {
 
 const rootValidates = {
   payload: {
-    token: Joi.string().valid(process.env.SLASH_COMMANDS_TOKEN).options({
+    token: Joi.string().valid(process.env.SLACK_VERIFICATION_TOKEN).options({
       language: { any: { allowOnly: 'xxxxxxxxxxx' } }
     }),
     team_id: Joi.any(),
@@ -72,40 +67,46 @@ const rootValidates = {
   failAction: rootHandler,
 }
 
-function getEmoji(emoji) {
-  return redisClient.existsAsync(REDIS_EMOJI_KEY).then((reply) => {
-    return getEmojis(reply).then((emojis) => {
-        if (!emojis[emoji]) throw new Error(`${emoji} is missing or an error has occurred. please try again :pray:`);
-        return emojis[emoji];
-    });
+function getEmoji(client, emoji) {
+  return client.emoji.list().then((res) => {
+      const emojis = res.emoji || {};
+      if (!emojis[emoji]) throw new Error(`${emoji} is missing or an error has occurred. please try again :pray:`);
+      return emojis[emoji];
   });
-}
-
-function getEmojis(isCached = 0) {
-  if (isCached) {
-    return redisClient.getAsync(REDIS_EMOJI_KEY).then((result) => {
-      return JSON.parse(result);
-    });
-  } else {
-    return slackClient.emoji.list().then((res) => {
-      return res.emoji;
-    });
-  }
 }
 
 function getUser(userID) {
-  return redisClient.existsAsync(userID).then((reply) => {
-    if (reply) {
-      return redisClient.getAsync(userID).then((user) => {
-        return JSON.parse(user);
-      });
-    } else {
-      return slackClient.users.info(userID).then(res => {
-        return redisClient.setAsync(userID, JSON.stringify(res.user)).then(() => res.user);
-      });
-    }
+  return User.findOne({ id: userID }).then((user) => {
+    if (!user) throw new Error(`You are not authorized. Please sign up from ${process.env.URL}`);
+    return user;
   });
 }
+
+const server = new Hapi.Server({
+  connections: {
+    routes: {
+      files: {
+        relativeTo: path.join(__dirname, 'public')
+      }
+    }
+  }
+});
+
+server.connection({port: (process.env.PORT || 8124)});
+
+server.register(require('inert'), () => {});
+
+server.register(require('vision'), (err) => {
+  server.views({
+    engines: {
+      html: require('handlebars'),
+    },
+    relativeTo: __dirname,
+    path: 'templates',
+    layout: true,
+    layoutPath: path.join(__dirname, 'templates/layout'),
+  });
+});
 
 server.route({
   method: 'POST',
@@ -116,6 +117,57 @@ server.route({
   handler: rootHandler,
 });
 
-server.start(() => {
-  console.log('Server running at:', server.info.uri);
+server.route({
+  method: 'GET',
+  path:'/',
+  handler: (request, reply) => {
+    reply.view('index', null);
+  },
+});
+
+server.route({
+    method: 'GET',
+    path: '/{param*}',
+    handler: {
+      directory: {
+        path: '.',
+        redirectToSlash: true,
+        index: true
+      }
+    }
+});
+
+server.register(require('bell'), (err) => {
+  server.auth.strategy('slack', 'bell', {
+      provider: 'slack',
+      password: 'cookie_encryption_password_secure',
+      clientId: process.env.SLACK_CLIENT_ID,
+      clientSecret: process.env.SLACK_CLIENT_SECRET,
+      isSecure: false
+  });
+
+  server.route({
+      method: ['GET', 'POST'],
+      path: '/auth',
+      config: {
+        auth: 'slack',
+        handler: function (request, reply) {
+          const { user_id: id, access_token: token } = request.auth.credentials.profile;
+
+          const user = new User({ id, token });
+
+          User.update({ id }, user, { upsert: true }, (err) => {
+            if (err) {
+              reply(`An error has occurred. please try agein. <a href="${process.env.URL}">process.env.URL</a>`);
+            } else {
+              reply('Success');
+            }
+          });
+        }
+      }
+  });
+
+  server.start(() => {
+    console.log('Server running at:', server.info.uri);
+  });
 });

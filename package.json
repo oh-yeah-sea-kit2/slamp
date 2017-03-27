@@ -1,10 +1,13 @@
 {
   "dependencies": {
     "@slack/client": "^3.9.0",
-    "bluebird": "^3.5.0",
+    "bell": "^8.5.0",
+    "handlebars": "^4.0.6",
     "hapi": "^16.1.0",
+    "inert": "^4.1.0",
     "joi": "^10.2.2",
-    "redis": "^2.7.1"
+    "mongoose": "^4.9.1",
+    "vision": "^4.1.1"
   },
   "name": "slack-stamp-command",
   "version": "0.0.1",
