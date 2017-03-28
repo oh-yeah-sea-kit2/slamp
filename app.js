@@ -143,6 +143,7 @@ server.register(require('bell'), (err) => {
       password: 'cookie_encryption_password_secure',
       clientId: process.env.SLACK_CLIENT_ID,
       clientSecret: process.env.SLACK_CLIENT_SECRET,
+      scope: ['commands', 'chat:write:user', 'emoji:read'],
       isSecure: false
   });
 
