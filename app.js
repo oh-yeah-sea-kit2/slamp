@@ -154,9 +154,7 @@ server.register(require('bell'), (err) => {
         handler: function (request, reply) {
           const { user_id: id, access_token: token } = request.auth.credentials.profile;
 
-          const user = new User({ id, token });
-
-          User.update({ id }, user, { upsert: true }, (err) => {
+          User.update({ id }, { id, token }, { upsert: true }, (err) => {
             if (err) {
               reply(`An error has occurred. please try agein. <a href="${process.env.URL}">${process.env.URL}</a>`);
             } else {
