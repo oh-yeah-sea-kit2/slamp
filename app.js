@@ -11,6 +11,8 @@ const Hapi = require('hapi'),
 mongoose.Promise = Promise;
 mongoose.connect(process.env.MONGODB_URI);
 
+let slackClient;
+
 const rootHandler = function(request, reply, source, rootErr) {
   if (rootErr) return reply({ text: 'An error has occurred :pray:' });
 
@@ -27,9 +29,9 @@ const rootHandler = function(request, reply, source, rootErr) {
   const emoji = text.replace(/:([^:]+):/, '$1');
 
   getUser(userID).then((user) => {
-    const slackClient = new WebClient(user.token);
+    slackClient = new WebClient(user.token);
 
-    return getEmoji(slackClient, emoji).then((image) => {
+    return getEmoji(emoji).then((image) => {
       return slackClient.chat.postMessage(channelID, '', {
         as_user: true,
         text: '',
@@ -67,11 +69,11 @@ const rootValidates = {
   failAction: rootHandler,
 }
 
-function getEmoji(client, emoji) {
-  return client.emoji.list().then((res) => {
-      const emojis = res.emoji || {};
-      if (!emojis[emoji]) throw new Error(`${emoji} is missing or an error has occurred. please try again :pray:`);
-      return emojis[emoji];
+function getEmoji(emoji) {
+  return slackClient.emoji.list().then((res) => {
+    const emojis = res.emoji || {};
+    if (!emojis[emoji]) throw new Error(`${emoji} is missing or an error has occurred. please try again :pray:`);
+    return emojis[emoji];
   });
 }
 
