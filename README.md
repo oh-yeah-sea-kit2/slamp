@@ -1,4 +1,4 @@
-# slack-stamp-command
+# slamp
 
 Chat with big :emoji: in slack.
 
