@@ -1,10 +1,28 @@
 {
-  "name": "slack-stemp-command",
-  "description": "Big :emoji: like stamp",
-  "repository": "https://github.com/ringogirl/slack-stamp-command",
-  "env" : {
-    "TOKEN": "",
-    "SLASH_COMMANDS_TOKEN": "",
-    "TZ"                        : "Asia/Tokyo"
-  }
+  "name": "Slamp",
+  "description": "Chat with big :emoji: in slack.",
+  "repository": "https://github.com/ringogirl/slamp",
+  "env": {
+    "URL": {
+      "description": "Application URL",
+      "value": ""
+    },
+    "SLACK_VERIFICATION_TOKEN": {
+      "description": "Slack verification token",
+      "value": ""
+    },
+    "SLACK_CLIENT_ID": {
+      "description": "Slack oauth application client id",
+      "value": ""
+    },
+    "SLACK_CLIENT_SECRET": {
+      "description": "Slack oauth application secret",
+      "value": ""
+    }
+  },
+  "addons": [
+    {
+      "plan": "mongolab:sandbox"
+    }
+  ]
 }
