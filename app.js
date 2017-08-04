@@ -82,7 +82,8 @@ const rootValidates = {
     user_name: Joi.any(),
     command: Joi.string().valid('/stamp'),
     text: Joi.string().regex(/^:[^:]+:$/),
-    response_url: Joi.any(),
+    response_url: Joi.string().uri(),
+    trigger_id: Joi.any(),
   },
   failAction: rootHandler,
 }
