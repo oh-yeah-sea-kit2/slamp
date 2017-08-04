@@ -13,8 +13,26 @@ mongoose.connect(process.env.MONGODB_URI);
 
 let slackClient;
 
+const server = new Hapi.Server({
+  connections: {
+    routes: {
+      files: {
+        relativeTo: path.join(__dirname, 'public')
+      }
+    }
+  }
+});
+
 const rootHandler = function(request, reply, source, rootErr) {
-  if (rootErr) return reply({ text: 'An error has occurred :pray:' });
+
+  if (rootErr) {
+    request.log('error', {
+      message: rootErr.message,
+      error: new Error(),
+    });
+
+    return reply({ text: 'An error has occurred :pray:' });
+  }
 
   const {
     payload: {
@@ -84,17 +102,19 @@ function getUser(userID) {
   });
 }
 
-const server = new Hapi.Server({
-  connections: {
-    routes: {
-      files: {
-        relativeTo: path.join(__dirname, 'public')
-      }
+server.connection({port: (process.env.PORT || 8124)});
+
+server.register({
+  register: require('good'),
+  options: {
+    reporters: {
+      console: [{
+        module: 'good-console',
+        args: [{ log: '*', response: '*', error: '*' }],
+      }, 'stdout'],
     }
   }
 });
-
-server.connection({port: (process.env.PORT || 8124)});
 
 server.register(require('inert'), () => {});
 
