@@ -11,144 +11,115 @@ const Hapi = require('hapi'),
 mongoose.Promise = Promise;
 mongoose.connect(process.env.MONGODB_URI);
 
-let slackClient;
+const getUser = async (id) => {
+  const user = await User.findOne({ id });
+  if (!user) throw new Error(`You are not authorized. Please sign up from ${process.env.URL}`);
+  return user;
+}
+
+const createClient = async (token) => {
+  return new WebClient(token);
+}
+
+const getEmoji = async (client, emoji) => {
+  const list = await client.emoji.list();
+  const emojis = list.emoji || {};
+
+  if (!emojis[emoji]) throw new Error(`${emoji} is missing or an error has occurred. please try again :pray:`);
+
+  return emojis[emoji];
+}
+
+const response = async (client, id, image) => {
+  await client.chat.postMessage({
+    channel: id,
+    as_user: true,
+    text: '',
+    attachments: [{
+      color: '#fff',
+      text: '',
+      image_url: image,
+    }],
+  });
+}
 
 const server = new Hapi.Server({
-  connections: {
-    routes: {
-      files: {
-        relativeTo: path.join(__dirname, 'public')
-      }
+  routes: {
+    files: {
+      relativeTo: path.join(__dirname, 'public')
     }
-  }
+  },
+  port: (process.env.PORT || 8124),
 });
 
-const rootHandler = function(request, reply, source, rootErr) {
-
-  if (rootErr) {
-    request.log('error', {
-      message: rootErr.message,
-      error: new Error(),
-    });
-
-    return reply({ text: 'An error has occurred :pray:' });
+const rootHandler = async (request, h, source, err) => {
+  if (err) {
+    server.log('error', [err.message, err.stack]);
+    return { text: 'An error has occurred :pray:' };
   }
 
   const {
-    payload: {
-      text,
-      user_name: username,
-      user_id: userID,
-      channel_id: channelID,
-      response_url: responseURL,
-    },
-  } = request;
+    text,
+    user_id: userID,
+    channel_id: channelID,
+  } = request.payload;
 
-  const emoji = text.replace(/:([^:]+):/, '$1');
 
-  getUser(userID).then((user) => {
-    slackClient = new WebClient(user.token);
+  try {
+    const emoji = text.replace(/:([^:]+):/, '$1');
+    const user = await getUser(userID);
+    const client = await createClient(user.token);
+    const image = await getEmoji(client, emoji);
 
-    return getEmoji(emoji).then((image) => {
-      return slackClient.chat.postMessage(channelID, '', {
-        as_user: true,
-        text: '',
-        attachments: [{
-          color: '#fff',
-          text: '',
-          image_url: image,
-        }],
-      }).then(() => {
-        reply();
-      });
-    });
-  }).catch((err) => {
-    reply({
-      text: err.message,
-    });
-  });
-}
+    await response(client, channelID, image);
 
-const rootValidates = {
-  payload: {
-    token: Joi.string().valid(process.env.SLACK_VERIFICATION_TOKEN).options({
-      language: { any: { allowOnly: 'xxxxxxxxxxx' } }
-    }),
-    team_id: Joi.any(),
-    team_domain: Joi.any(),
-    channel_id: Joi.any(),
-    channel_name: Joi.any(),
-    user_id: Joi.any(),
-    user_name: Joi.any(),
-    command: Joi.string().valid('/stamp'),
-    text: Joi.string().regex(/^:[^:]+:$/),
-    response_url: Joi.string().uri(),
-    trigger_id: Joi.any(),
-  },
-  failAction: rootHandler,
-}
-
-function getEmoji(emoji) {
-  return slackClient.emoji.list().then((res) => {
-    const emojis = res.emoji || {};
-    if (!emojis[emoji]) throw new Error(`${emoji} is missing or an error has occurred. please try again :pray:`);
-    return emojis[emoji];
-  });
-}
-
-function getUser(userID) {
-  return User.findOne({ id: userID }).then((user) => {
-    if (!user) throw new Error(`You are not authorized. Please sign up from ${process.env.URL}`);
-    return user;
-  });
-}
-
-server.connection({port: (process.env.PORT || 8124)});
-
-server.register({
-  register: require('good'),
-  options: {
-    reporters: {
-      console: [{
-        module: 'good-console',
-        args: [{ log: '*', response: '*', error: '*' }],
-      }, 'stdout'],
-    }
+    return null;
+  } catch(e) {
+    server.log('error', [e.message, e.stack]);
+    return { text: e.message };
   }
-});
+}
 
-server.register(require('inert'), () => {});
+const payloadValidationSchema = {
+  token: Joi.string().valid(process.env.SLACK_VERIFICATION_TOKEN).options({
+    language: { any: { allowOnly: 'xxxxxxxxxxx' } }
+  }),
+  team_id: Joi.any(),
+  team_domain: Joi.any(),
+  channel_id: Joi.any(),
+  channel_name: Joi.any(),
+  user_id: Joi.any(),
+  user_name: Joi.any(),
+  command: Joi.string().valid('/stamp'),
+  text: Joi.string().regex(/^:[^:]+:$/),
+  response_url: Joi.string().uri(),
+  trigger_id: Joi.any(),
+};
 
-server.register(require('vision'), (err) => {
-  server.views({
-    engines: {
-      html: require('handlebars'),
-    },
-    relativeTo: __dirname,
-    path: 'templates',
-    layout: true,
-    layoutPath: path.join(__dirname, 'templates/layout'),
+const provision = async () => {
+  await server.register({
+    plugin: require('good'),
+    options: {
+      reporters: {
+        consoleReporter: [{
+          module: 'good-squeeze',
+          name: 'Squeeze',
+          args: [{ log: '*', response: '*', request: 'e' }]
+        }, {
+          module: 'good-console'
+        }, 'stdout'],
+        http: [{
+          module: 'good-squeeze',
+          name: 'Squeeze',
+          args: [{ error: '*' }],
+        }],
+      }
+    }
   });
-});
 
-server.route({
-  method: 'POST',
-  path:'/',
-  config: {
-    validate: rootValidates,
-  },
-  handler: rootHandler,
-});
+  await server.register(require('inert'));
 
-server.route({
-  method: 'GET',
-  path:'/',
-  handler: (request, reply) => {
-    reply.view('index', null);
-  },
-});
-
-server.route({
+  server.route({
     method: 'GET',
     path: '/{param*}',
     handler: {
@@ -158,38 +129,77 @@ server.route({
         index: true
       }
     }
-});
+  });
 
-server.register(require('bell'), (err) => {
-  server.auth.strategy('slack', 'bell', {
-      provider: 'slack',
-      password: 'cookie_encryption_password_secure',
-      clientId: process.env.SLACK_CLIENT_ID,
-      clientSecret: process.env.SLACK_CLIENT_SECRET,
-      scope: ['commands', 'chat:write:user', 'emoji:read'],
-      isSecure: false
+  await server.register(require('vision'));
+
+  server.views({
+    engines: {
+      html: require('handlebars'),
+    },
+    relativeTo: __dirname,
+    path: 'templates',
+    layout: true,
+    layoutPath: path.join(__dirname, 'templates/layout'),
   });
 
   server.route({
-      method: ['GET', 'POST'],
-      path: '/auth',
-      config: {
-        auth: 'slack',
-        handler: function (request, reply) {
-          const { user_id: id, access_token: token } = request.auth.credentials.profile;
+    method: 'POST',
+    path:'/',
+    options: {
+      validate: {
+        payload: payloadValidationSchema,
+        failAction: (request, h, err) => {
+          server.log('error', [err.message, err.details]);
+          return h.response({ text: err.message }).takeover();
+        },
+      },
+    },
+    handler: rootHandler,
+  });
 
-          User.update({ id }, { id, token }, { upsert: true }, (err) => {
-            if (err) {
-              reply(`An error has occurred. please try agein. <a href="${process.env.URL}">${process.env.URL}</a>`);
-            } else {
-              reply('Success');
-            }
-          });
+  server.route({
+    method: 'GET',
+    path:'/',
+    handler: (request, h) => {
+      return h.view('index');
+    },
+  });
+
+  await server.register(require('bell'));
+
+  server.auth.strategy('slack', 'bell', {
+    provider: 'slack',
+    password: 'cookie_encryption_password_secure',
+    clientId: process.env.SLACK_CLIENT_ID,
+    clientSecret: process.env.SLACK_CLIENT_SECRET,
+    scope: ['commands', 'chat:write:user', 'emoji:read'],
+    isSecure: false
+  });
+
+  server.route({
+    method: ['GET', 'POST'],
+    path: '/auth',
+    options: {
+      auth: 'slack',
+      handler: (request) => {
+        if (!request.auth.isAuthenticated) {
+          return `Authentication failed due to: ${request.auth.error.message}`;
         }
+
+        const { user_id: id, access_token: token } = request.auth.credentials.profile;
+        return User.update({ id }, { id, token }, { upsert: true }).then(() => {
+          return 'Success';
+        }).catch(() => {
+          return `An error has occurred. please try agein. <a href="${process.env.URL}">${process.env.URL}</a>`;
+        });
       }
+    }
   });
 
   server.start(() => {
     console.log('Server running at:', server.info.uri);
   });
-});
+}
+
+provision();
