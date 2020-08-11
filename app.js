@@ -94,6 +94,7 @@ const payloadValidationSchema = {
   text: Joi.string().regex(/^:[^:]+:$/),
   response_url: Joi.string().uri(),
   trigger_id: Joi.any(),
+  api_app_id: Joi.any(),
 };
 
 const provision = async () => {
