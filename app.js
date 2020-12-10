@@ -95,6 +95,7 @@ const payloadValidationSchema = {
   response_url: Joi.string().uri(),
   trigger_id: Joi.any(),
   api_app_id: Joi.any(),
+  is_enterprise_install: Joi.any(),
 };
 
 const provision = async () => {
