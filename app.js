@@ -189,7 +189,10 @@ const provision = async () => {
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
     scope: ["commands", "chat:write:user", "emoji:read"],
-    isSecure: true,
+    isSecure: false,
+    providerParams: {
+        redirect_uri: server.info.uri + '/auth'
+    }
   });
 
   server.route({
@@ -198,6 +201,7 @@ const provision = async () => {
     options: {
       auth: "slack",
       handler: (request) => {
+        server.log("info", [request]);
         if (!request.auth.isAuthenticated) {
           return `Authentication failed due to: ${request.auth.error.message}`;
         }
