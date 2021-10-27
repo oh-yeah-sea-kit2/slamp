@@ -58,7 +58,6 @@ const server = new Hapi.Server({
     },
   },
   port: process.env.PORT || 8124,
-  tls: true
 });
 
 const rootHandler = async (request, h, source, err) => {
