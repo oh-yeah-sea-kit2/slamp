@@ -58,6 +58,7 @@ const server = new Hapi.Server({
     },
   },
   port: process.env.PORT || 8124,
+  tls: true
 });
 
 const rootHandler = async (request, h, source, err) => {
@@ -189,9 +190,9 @@ const provision = async () => {
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
     scope: ["commands", "chat:write:user", "emoji:read"],
-    isSecure: false,
+    isSecure: true,
     providerParams: {
-        redirect_uri: 'https://cm-ootaka-slamp.herokuapp.com/auth'
+        redirect_uri: server.info.uri + '/auth'
     }
   });
 
@@ -201,8 +202,6 @@ const provision = async () => {
     options: {
       auth: "slack",
       handler: (request) => {
-        console.log("***** request info *****:");
-        console.log(request);
         if (!request.auth.isAuthenticated) {
           return `Authentication failed due to: ${request.auth.error.message}`;
         }
