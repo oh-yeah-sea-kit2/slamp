@@ -190,9 +190,7 @@ const provision = async () => {
     clientSecret: process.env.SLACK_CLIENT_SECRET,
     scope: ["commands", "chat:write:user", "emoji:read"],
     isSecure: false,
-    providerParams: {
-      redirect_uri: server.info.uri + '/auth'
-    }
+    forceHttps: true,
   });
 
   server.route({
