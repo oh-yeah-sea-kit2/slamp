@@ -191,7 +191,7 @@ const provision = async () => {
     scope: ["commands", "chat:write:user", "emoji:read"],
     isSecure: false,
     providerParams: {
-        redirect_uri: server.info.uri + '/auth'
+        redirect_uri: 'https://cm-ootaka-slamp.herokuapp.com/auth'
     }
   });
 
@@ -201,7 +201,8 @@ const provision = async () => {
     options: {
       auth: "slack",
       handler: (request) => {
-        server.log("info", [request]);
+        console.log("***** request info *****:");
+        console.log(request);
         if (!request.auth.isAuthenticated) {
           return `Authentication failed due to: ${request.auth.error.message}`;
         }
