@@ -4,7 +4,7 @@
 
 Chat with big :emoji: in slack.
 
-![image](https://github.com/ringogirl/slack-stamp-command/raw/master/images/serval_chan.jpg)
+![image](images/serval_chan.jpg)
 
 ## Install yourself
 
@@ -79,9 +79,9 @@ type below in slack.
 
 `/stamp :custom_emoji:`
 
-![image](https://github.com/ringogirl/slack-stamp-command/raw/master/images/stamp.gif)
+![image](images/stamp.gif)
 
 
 ## So fun!
 
-![image](https://github.com/ringogirl/slack-stamp-command/raw/master/images/kotsume_kawauso.jpg)
+![image](images/kotsume_kawauso.jpg)
