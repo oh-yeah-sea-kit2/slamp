@@ -18,11 +18,10 @@
     "SLACK_CLIENT_SECRET": {
       "description": "Slack oauth application secret",
       "value": ""
+    },
+    "MONGODB_URI": {
+      "description": "MongoDB URI",
+      "value": ""
     }
-  },
-  "addons": [
-    {
-      "plan": "mongolab:sandbox"
-    }
-  ]
+  }
 }
