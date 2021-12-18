@@ -2,14 +2,23 @@
 
 const Hapi = require("hapi");
 const Joi = require("joi");
+const url = require("url");
 const path = require("path");
 const mongoose = require("mongoose");
+const User = require("./models/user");
 const { WebClient } = require('@slack/web-api');
 
 mongoose.Promise = Promise;
 mongoose.connect(process.env.MONGODB_URI);
 
-const token = process.env.SLACK_BOT_USER_OAUTH_TOKEN;
+const getUser = async (id) => {
+  const user = await User.findOne({ id });
+  if (!user)
+    throw new Error(
+      `You are not authorized. Please sign up from ${process.env.URL}`
+    );
+  return user;
+};
 
 const createClient = async (token) => {
   return new WebClient(token);
@@ -61,7 +70,8 @@ const rootHandler = async (request, h, source, err) => {
 
   try {
     const emoji = text.replace(/:([^:]+):/, "$1");
-    const client = await createClient(token);
+    const user = await getUser(userID);
+    const client = await createClient(user.token);
     const image = await getEmoji(client, emoji);
 
     await response(client, channelID, image);

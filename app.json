@@ -22,6 +22,10 @@
     "MONGODB_URI": {
       "description": "MongoDB URI",
       "value": ""
+    },
+    "SLACK_BOT_USER_OAUTH_TOKEN": {
+      "description": "Bot User OAuth Token",
+      "value": ""
     }
   }
 }
