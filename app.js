@@ -190,10 +190,8 @@ const provision = async () => {
     clientSecret: process.env.SLACK_CLIENT_SECRET,
     scope: [
       'commands',
-      'chat:write',
+      'chat:write.user',
       'emoji:read',
-      'chat:write.customize',
-      'chat:write.public'
     ],
     isSecure: false,
     forceHttps: true,
