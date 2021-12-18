@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@slack/client": "^4.1.0",
+    "@slack/web-api": "^6.5.1",
     "bell": "^9.3.0",
     "good": "^8.1.1",
     "good-console": "^7.1.0",

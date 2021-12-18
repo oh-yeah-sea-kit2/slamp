@@ -1,4 +1,4 @@
-FROM node:9.11.1
+FROM node:14.17.6
 
 RUN apt-get update -y -q && apt-get install -y build-essential && apt-get install -y python
 

@@ -1,12 +1,12 @@
 "use strict";
 
-const Hapi = require("hapi"),
-  Joi = require("joi"),
-  WebClient = require("@slack/client").WebClient,
-  url = require("url"),
-  path = require("path"),
-  mongoose = require("mongoose"),
-  User = require("./models/user");
+const Hapi = require("hapi");
+const Joi = require("joi");
+const url = require("url");
+const path = require("path");
+const mongoose = require("mongoose");
+const User = require("./models/user");
+const { WebClient } = require('@slack/web-api');
 
 mongoose.Promise = Promise;
 mongoose.connect(process.env.MONGODB_URI);
@@ -203,8 +203,7 @@ const provision = async () => {
           return `Authentication failed due to: ${request.auth.error.message}`;
         }
 
-        const { user_id: id, access_token: token } =
-          request.auth.credentials.profile;
+        const { user_id: id, access_token: token } = request.auth.credentials.profile;
         return User.update({ id }, { id, token }, { upsert: true })
           .then(() => {
             return "Success";
