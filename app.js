@@ -188,7 +188,13 @@ const provision = async () => {
     password: "cookie_encryption_password_secure",
     clientId: process.env.SLACK_CLIENT_ID,
     clientSecret: process.env.SLACK_CLIENT_SECRET,
-    scope: ["commands", "chat:write", "emoji:read"],
+    scope: [
+      'commands',
+      'chat:write',
+      'emoji:read',
+      'chat:write.customize',
+      'chat:write.public'
+    ],
     isSecure: false,
     forceHttps: true,
   });
